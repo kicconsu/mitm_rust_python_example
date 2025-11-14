@@ -1,4 +1,5 @@
 import socketio
+#python -m pip install python-socketio, requests, websocket-client
 import threading
 
 class ChatroomClient:
@@ -20,7 +21,6 @@ class ChatroomClient:
         print("Type your messages below (Ctrl+C to exit):")
     
     def on_disconnect(self):
-        self.connected = False
         print("\nDisconnected from chatroom")
     
     def on_message(self, data):
@@ -35,6 +35,7 @@ class ChatroomClient:
         """Connect to the Socket.IO server"""
         try:
             self.sio.connect(self.url)
+            self.sio.emit("join", self.sender)
         except Exception as e:
             print(f"Connection failed: {e}")
     
@@ -57,7 +58,9 @@ class ChatroomClient:
     def disconnect(self):
         """Disconnect from the server"""
         if self.connected:
-            self.sio.disconnect()
+            self.sio.emit('exit')
+            #self.sio.disconnect()
+            self.connected = False
 
 
 if __name__ == "__main__":
@@ -75,5 +78,4 @@ if __name__ == "__main__":
                 else:
                     client.send_message(text)
     except KeyboardInterrupt:
-        print("\nExiting chatroom...")
         client.disconnect()

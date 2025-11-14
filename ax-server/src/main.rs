@@ -58,10 +58,8 @@ async fn on_connect(sock: SocketRef, Data(name):Data<String>, State(chat_state):
     
     info!("Client connected: {}::[{}]", sock.id, name);
 
-    let msg= ChatMsg { 
-        sender: "[SERVER]".to_string(),
-        text: format!("{} se ha unido al chatroom.", name)
-    };
+    let msg= ChatMsg::make_server_msg(format!("{} se ha unido al chatroom.", name));
+
     sock.broadcast()
     .emit("message", &msg)
     .await.ok();
@@ -72,15 +70,15 @@ async fn on_disc(sock: SocketRef, State(chat_state):State<ChatState>) {
 
     {
         let mut users = chat_state.users.lock().unwrap();
-        username = users.remove(sock.id.as_str()).unwrap();
+        //Puede pasar que el servidor se reinicia y los sockets abiertos circunventan el registro
+        //usar un ANÓNIMO en cuyo caso pero seguramente hay una manera de sacarle el nombre. quizas reforzar registro al mandar mensajes?
+        username = users.remove(sock.id.as_str()).unwrap_or("ANÓNIMO".to_string());
     }
 
     info!("Client disconnected: {}::[{}]", sock.id, &username);
 
-    let msg = ChatMsg {
-        sender: "[SERVER]".to_string(),
-        text: format!("{} ha salido del chat.", {username})
-    };
+    let msg = ChatMsg::make_server_msg(format!("{} ha salido del chat.", {username}));
+
     sock.broadcast()
         .emit("message", &msg)
         .await.ok();

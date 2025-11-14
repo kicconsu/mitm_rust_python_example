@@ -1,14 +1,19 @@
 import socketio
 #python -m pip install python-socketio, requests, websocket-client
-import threading
+from prompt_toolkit import PromptSession, print_formatted_text
+from prompt_toolkit.patch_stdout import patch_stdout
+from prompt_toolkit.formatted_text import FormattedText
+
+
 
 class ChatroomClient:
-    def __init__(self, url="192.168.1.16:3000", sender="Anonymous"):
+    def __init__(self, url="192.168.1.16:3000", sender="Anonymous", color='fg:green'):
         self.url = "http://"+url
         self.sender = sender
         self.sio = socketio.Client()
         self.messages = []
         self.connected = False
+        self.color = color
         
         # Register event handlers
         self.sio.on('connect', self.on_connect)
@@ -24,12 +29,13 @@ class ChatroomClient:
         print("\nDisconnected from chatroom")
     
     def on_message(self, data):
-        """Called when a message is received"""
-        # Don't print your own messages twice
-        if data['sender'] != self.sender:
-            print(f"\r[{data['sender']}]: {data['text']}")
-            print("> ", end="", flush=True)
-        self.messages.append(data)
+        """Al recibir un mensaje, printearlo con el color apropiado"""
+        fragments = FormattedText([
+            (data['color'], f'[{data['sender']}]: '),
+            ('fg:white', f'{data['text']}')
+        ])
+        print_formatted_text(fragments)
+        #self.messages.append(data)
     
     def connect(self):
         """Connect to the Socket.IO server"""
@@ -50,7 +56,8 @@ class ChatroomClient:
         if self.connected:
             msg = {
                 "sender": self.sender,
-                "text": text
+                "text": text,
+                "color": self.color
             }
             self.sio.emit('message', msg)
     
@@ -61,20 +68,51 @@ class ChatroomClient:
             print(f"[{msg['sender']}]: {msg['text']}")
         print("--- End History ---\n")
 
+#funcion auxiliar para definir el color del usuario 
+def pick_color():
+    colors = {
+        "0": "green",
+        "1": "cyan",
+        "2": "purple",
+        "3": "pink",
+        "4": "yellow"
+    }
+
+    print(f"Elija un color. Sus opciones son:")
+    options = []
+    for i in range(len(colors)):
+        color = colors[str(i)]
+        options.append((f'fg:{color}', f'   ({i}) {color}\n'))
+    fragments = FormattedText(options)
+    print_formatted_text(fragments)
+    opt = input("Ingrese el número: ")
+
+    return f"fg:{colors.get(opt, "green")}"
 
 if __name__ == "__main__":
+    # Recibir nombre e ip
     sender = input("Enter your name: ").strip() or "Anonymous"
     ip = input("Ingresa la dirección IP del chatroom: ").strip()
-    client = ChatroomClient(sender=sender, url=ip)
+
+    # Instanciar el cliente
+    client = ChatroomClient(sender=sender, url=ip, color=pick_color())
     client.connect()
     
+    # Usar prompt_toolkit para evitar que se pierda lo que lleva escrito el usuario al recibir mensajes del server
+    session = PromptSession()
     try:
-        while True:
-            text = input("> ")
-            if text.strip():
-                if text == "/history":
-                    client.show_history()
-                else:
-                    client.send_message(text)
-    except KeyboardInterrupt:
+        with patch_stdout():
+            while True:
+
+                text = session.prompt("> ")
+
+                if text.strip():
+                    if text == "/history":
+                        client.show_history()
+                    else:
+                        client.send_message(text)
+
+    except (KeyboardInterrupt, EOFError):
+        pass
+    finally:
         client.disconnect()

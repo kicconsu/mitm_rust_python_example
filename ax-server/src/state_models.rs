@@ -1,10 +1,21 @@
 use std::{collections::HashMap, sync::{Arc, Mutex}};
 use serde::{Deserialize, Serialize}; //manejo de JSON
 
+//Struct para des-serializar los mensajes entrantes y serializar los salientes.
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ChatMsg {
     pub sender: String,
     pub text: String,
+    pub color:String,
+}
+impl ChatMsg{
+    pub fn make_server_msg(text:String) -> ChatMsg {
+        ChatMsg {
+            sender: "[SERVER]".to_string(),
+            text:text,
+            color: "fg:white".to_string()
+        }
+    }
 }
 
 // Estado compartido para: saber qué usuario está en cada socket (for now)

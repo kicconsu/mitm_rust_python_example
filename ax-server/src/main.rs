@@ -29,11 +29,9 @@ async  fn main(){
     //io.namespace define las funciones que se ejecutan en un path dependiendo de eventos.
     //cada evento es un nombre y una funcion handler
     io.ns("/", async |s: SocketRef| {
-        //s.on("connect", on_connect);//por defecto
-        s.on("message", on_new_msg);//por defecto
-        s.on("join", emit_join); // registrar usuario y anunciar su llegada
-        s.on("exit", emit_exit);
-        //s.on_disconnect(on_disc); //por defecto
+        s.on("connect", on_connect);// emitir mensaje de llegada y registrar usuario en el ChatState
+        s.on("message", on_new_msg);// emitir el mensaje entrante
+        s.on_disconnect(on_disc); // emiti mensaje de salida y sacar el usuario del ChatState
     });
     
     //una app de Axum se define como una serie de rutas. (por ahora es solo '/'),
@@ -50,15 +48,7 @@ async  fn main(){
 }
 
 // ---------------- HANDLERS DE EVENTOS ----------------
-async fn on_connect(_sock: SocketRef) {
-    info!("Socket llegando...");
-}
-
-async fn on_disc(_sock: SocketRef) {
-    info!("Socket saliendo...")
-}
-
-async fn emit_join(sock: SocketRef, Data(name):Data<String>, State(chat_state):State<ChatState>) {
+async fn on_connect(sock: SocketRef, Data(name):Data<String>, State(chat_state):State<ChatState>) {
     //Se abre un bloque{} de codigo para usar el users_dict solo por el tiempo necesario
     {
         let mut users = chat_state.users.lock().unwrap();
@@ -77,8 +67,7 @@ async fn emit_join(sock: SocketRef, Data(name):Data<String>, State(chat_state):S
     .await.ok();
 }
 
-async fn emit_exit(sock: SocketRef, State(chat_state):State<ChatState>){
-    
+async fn on_disc(sock: SocketRef, State(chat_state):State<ChatState>) {
     let username:String;
 
     {
@@ -95,7 +84,6 @@ async fn emit_exit(sock: SocketRef, State(chat_state):State<ChatState>){
     sock.broadcast()
         .emit("message", &msg)
         .await.ok();
-
 }
 
 async fn on_new_msg(sock: SocketRef, Data(msg):Data<ChatMsg>) {

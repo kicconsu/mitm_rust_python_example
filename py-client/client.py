@@ -35,9 +35,15 @@ class ChatroomClient:
         """Connect to the Socket.IO server"""
         try:
             self.sio.connect(self.url)
-            self.sio.emit("join", self.sender)
+            self.sio.emit("connect", self.sender)
         except Exception as e:
             print(f"Connection failed: {e}")
+
+    def disconnect(self):
+        """Disconnect from the server"""
+        if self.connected:
+            self.sio.disconnect()
+            self.connected = False
     
     def send_message(self, text):
         """Send a message to the chatroom"""
@@ -54,13 +60,6 @@ class ChatroomClient:
         for msg in self.messages:
             print(f"[{msg['sender']}]: {msg['text']}")
         print("--- End History ---\n")
-    
-    def disconnect(self):
-        """Disconnect from the server"""
-        if self.connected:
-            self.sio.emit('exit')
-            #self.sio.disconnect()
-            self.connected = False
 
 
 if __name__ == "__main__":

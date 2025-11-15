@@ -1,0 +1,4 @@
+python-socketio
+requests
+websocket-client
+prompt_toolkit
